@@ -12,8 +12,8 @@ interface NavActionsProps {
 }
 
 /**
- * NavActions - Right-side action buttons (search toggle, wishlist, cart, profile, hamburger).
- * Badge counts are displayed when > 0.
+ * NavActions - Right-side action buttons.
+ * Links now point to real pages: /wishlist, /cart, /profile.
  */
 const NavActions = ({
   cartCount,
@@ -23,13 +23,11 @@ const NavActions = ({
   isMobileMenuOpen,
 }: NavActionsProps) => (
   <div className="flex items-center gap-1 sm:gap-2">
-    {/* Mobile search toggle */}
     <Button variant="ghost" size="icon" className="md:hidden" onClick={onToggleSearch}>
       <Search className="h-5 w-5" />
     </Button>
 
-    {/* Wishlist */}
-    <Link to="/" className="hidden sm:flex">
+    <Link to="/wishlist" className="hidden sm:flex">
       <Button variant="ghost" size="icon" className="relative">
         <Heart className="h-5 w-5" />
         {wishlistCount > 0 && (
@@ -40,8 +38,7 @@ const NavActions = ({
       </Button>
     </Link>
 
-    {/* Cart */}
-    <Link to="/">
+    <Link to="/cart">
       <Button variant="ghost" size="icon" className="relative">
         <ShoppingCart className="h-5 w-5" />
         {cartCount > 0 && (
@@ -52,12 +49,12 @@ const NavActions = ({
       </Button>
     </Link>
 
-    {/* Profile */}
-    <Button variant="ghost" size="icon" className="hidden sm:flex">
-      <User className="h-5 w-5" />
-    </Button>
+    <Link to="/profile" className="hidden sm:flex">
+      <Button variant="ghost" size="icon">
+        <User className="h-5 w-5" />
+      </Button>
+    </Link>
 
-    {/* Mobile hamburger */}
     <Button variant="ghost" size="icon" className="lg:hidden" onClick={onToggleMobileMenu}>
       {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
     </Button>
