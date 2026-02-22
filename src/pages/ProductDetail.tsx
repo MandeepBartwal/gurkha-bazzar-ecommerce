@@ -251,9 +251,10 @@ const ProductDetail = () => {
         </div>
 
         {/* Reviews section */}
-        {/* <section className="mb-16">
+        <section className="mb-16">
           <h2 className="text-xl font-bold text-foreground mb-6">Customer Reviews ({reviews.length})</h2>
 
+          {/* Review form */}
           <div className="bg-card rounded-xl border border-border p-6 mb-8">
             <h3 className="font-semibold mb-4">Write a Review</h3>
             <form onSubmit={handleSubmitReview} className="space-y-4">
@@ -285,6 +286,7 @@ const ProductDetail = () => {
             </form>
           </div>
 
+          {/* Review list */}
           <div className="space-y-4">
             {reviews.map((review) => (
               <div key={review.id} className="bg-card rounded-xl border border-border p-5">
@@ -309,7 +311,7 @@ const ProductDetail = () => {
               </div>
             ))}
           </div>
-        </section> */}
+        </section>
 
         {/* Related products */}
         {relatedProducts.length > 0 && (

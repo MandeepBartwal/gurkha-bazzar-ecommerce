@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useCart, TAX_RATE } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { orderService } from "@/api/services";
+import { getToken } from "@/api/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -9,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CreditCard, Building2, Smartphone, ChevronRight } from "lucide-react";
+import { CreditCard, Building2, Smartphone, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const PAYMENT_METHODS = [
@@ -22,6 +24,7 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { items, subtotal, discount, coupon, clearCart } = useCart();
   const { isLoggedIn, user, addOrder } = useAuth();
+  const [placing, setPlacing] = useState(false);
 
   const tax = (subtotal - discount) * TAX_RATE;
   const total = subtotal - discount + tax;
@@ -43,10 +46,9 @@ const Checkout = () => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handlePlaceOrder = (e: React.FormEvent) => {
+  const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Basic validation
     const required = ["firstName", "email", "address", "city", "zip"] as const;
     for (const field of required) {
       if (!form[field].trim()) {
@@ -55,19 +57,52 @@ const Checkout = () => {
       }
     }
 
-    // Create order
-    const order = {
-      id: `ORD-${Date.now().toString(36).toUpperCase()}`,
-      date: new Date().toISOString().split("T")[0],
-      items: items.map((i) => ({ name: i.product.name, price: i.product.price, quantity: i.quantity })),
-      total,
-      status: "Processing" as const,
-    };
+    setPlacing(true);
 
-    if (isLoggedIn) addOrder(order);
+    try {
+      const deliveryAddress = `${form.address}, ${form.city}, ${form.state} ${form.zip}, ${form.country}`;
 
-    clearCart();
-    navigate(`/order-confirmation/${order.id}`, { state: { order, total } });
+      // If user is logged in, try placing order via API
+      if (getToken()) {
+        const apiResponse = await orderService.placeOrder({
+          deliveryAddress,
+          totalAmount: total,
+          deliveryInstuctions: "",
+          orderItems: items.map((i) => ({
+            productId: i.product.id,
+            quantity: i.quantity,
+            unitPrice: i.product.price,
+          })),
+        });
+
+        if (apiResponse.success && apiResponse.data) {
+          const serverOrder = apiResponse.data;
+          clearCart();
+          navigate(`/order-confirmation/${serverOrder.orderNumber || serverOrder.id}`, {
+            state: { order: serverOrder, total },
+          });
+          return;
+        }
+      }
+
+      // Fallback: create local order (guest checkout or API failure)
+      const order = {
+        id: `ORD-${Date.now().toString(36).toUpperCase()}`,
+        date: new Date().toISOString().split("T")[0],
+        items: items.map((i) => ({ name: i.product.name, price: i.product.price, quantity: i.quantity })),
+        total,
+        status: "Processing" as const,
+      };
+
+      if (isLoggedIn) addOrder(order);
+      clearCart();
+      navigate(`/order-confirmation/${order.id}`, { state: { order, total } });
+    } catch (err) {
+      console.error("Order placement failed:", err);
+      toast.error("Failed to place order. Please try again.");
+    } finally {
+      setPlacing(false);
+    }
   };
 
   if (items.length === 0) {
@@ -88,7 +123,6 @@ const Checkout = () => {
       <Navbar />
 
       <main className="container mx-auto px-4 py-8">
-        {/* Breadcrumb */}
         <nav className="flex items-center gap-1 text-sm text-muted-foreground mb-6">
           <Link to="/cart" className="hover:text-primary">Cart</Link>
           <ChevronRight className="h-3.5 w-3.5" />
@@ -106,7 +140,6 @@ const Checkout = () => {
 
         <form onSubmit={handlePlaceOrder}>
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Form fields */}
             <div className="lg:col-span-2 space-y-8">
               {/* Billing details */}
               <section className="bg-card rounded-xl border border-border p-6">
@@ -158,9 +191,8 @@ const Checkout = () => {
                   {PAYMENT_METHODS.map(({ id, label, icon: Icon }) => (
                     <label
                       key={id}
-                      className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
-                        paymentMethod === id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                      }`}
+                      className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${paymentMethod === id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                        }`}
                     >
                       <RadioGroupItem value={id} />
                       <Icon className="h-5 w-5 text-muted-foreground" />
@@ -216,7 +248,10 @@ const Checkout = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full mt-6" size="lg">Place Order</Button>
+              <Button type="submit" className="w-full mt-6" size="lg" disabled={placing}>
+                {placing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Place Order
+              </Button>
             </div>
           </div>
         </form>

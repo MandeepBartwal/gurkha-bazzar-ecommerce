@@ -91,7 +91,7 @@ const ProductFilters = ({
     </div>
 
     {/* Minimum rating */}
-    <div>
+    {/* <div>
       <label className="text-sm font-semibold text-foreground mb-3 block">Minimum Rating</label>
       <div className="flex gap-2">
         {RATING_OPTIONS.map((rating) => (
@@ -106,7 +106,7 @@ const ProductFilters = ({
           </Button>
         ))}
       </div>
-    </div>
+    </div> */}
 
     {/* Clear all */}
     {hasActiveFilters && (

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { User, Package, Lock, LogOut, LogIn } from "lucide-react";
+import { User, Package, LogOut, LogIn, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 /* ------------------------------------------------------------------ */
@@ -16,20 +16,20 @@ import { toast } from "sonner";
 /* ------------------------------------------------------------------ */
 
 const AuthForm = () => {
-  const { login, signup } = useAuth();
+  const { login, signup, loading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLogin) {
-      const success = login(form.email, form.password);
+      const success = await login(form.email, form.password);
       if (success) toast.success("Welcome back!");
       else toast.error("Invalid email or password");
     } else {
-      const profile: UserProfile = { name: form.name, email: form.email, phone: form.phone, address: form.address };
-      signup(profile, form.password);
-      toast.success("Account created!");
+      const success = await signup(form.name, form.email, form.phone, form.password);
+      if (success) toast.success("Account created!");
+      else toast.error("Registration failed. Please try again.");
     }
   };
 
@@ -57,10 +57,6 @@ const AuthForm = () => {
                 <Label>Phone</Label>
                 <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} className="mt-1" />
               </div>
-              <div>
-                <Label>Address</Label>
-                <Input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} className="mt-1" />
-              </div>
             </>
           )}
           <div>
@@ -71,7 +67,10 @@ const AuthForm = () => {
             <Label>Password</Label>
             <Input type="password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className="mt-1" />
           </div>
-          <Button type="submit" className="w-full">{isLogin ? "Login" : "Sign Up"}</Button>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {isLogin ? "Login" : "Sign Up"}
+          </Button>
         </form>
 
         <p className="text-sm text-center mt-4 text-muted-foreground">
@@ -90,29 +89,19 @@ const AuthForm = () => {
 /* ------------------------------------------------------------------ */
 
 const ProfileDashboard = () => {
-  const { user, orders, updateProfile, changePassword, logout } = useAuth();
-  const [editForm, setEditForm] = useState({ name: user?.name || "", email: user?.email || "", phone: user?.phone || "", address: user?.address || "" });
-  const [passForm, setPassForm] = useState({ oldPassword: "", newPassword: "", confirmPassword: "" });
+  const { user, orders, updateProfile, logout, loading } = useAuth();
+  const [editForm, setEditForm] = useState({
+    name: user?.name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    address: user?.address || "",
+  });
 
-  const handleUpdateProfile = (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile(editForm);
-    toast.success("Profile updated!");
-  };
-
-  const handleChangePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passForm.newPassword !== passForm.confirmPassword) {
-      toast.error("Passwords don't match");
-      return;
-    }
-    const success = changePassword(passForm.oldPassword, passForm.newPassword);
-    if (success) {
-      toast.success("Password changed!");
-      setPassForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
-    } else {
-      toast.error("Current password is incorrect");
-    }
+    const success = await updateProfile(editForm);
+    if (success) toast.success("Profile updated!");
+    else toast.error("Failed to update profile");
   };
 
   const STATUS_COLORS: Record<string, string> = {
@@ -143,7 +132,6 @@ const ProfileDashboard = () => {
         <TabsList className="w-full justify-start mb-6">
           <TabsTrigger value="profile" className="gap-2"><User className="h-4 w-4" />Profile</TabsTrigger>
           <TabsTrigger value="orders" className="gap-2"><Package className="h-4 w-4" />Orders</TabsTrigger>
-          <TabsTrigger value="password" className="gap-2"><Lock className="h-4 w-4" />Password</TabsTrigger>
         </TabsList>
 
         {/* Profile tab */}
@@ -167,7 +155,10 @@ const ProfileDashboard = () => {
                 <Label>Address</Label>
                 <Input value={editForm.address} onChange={(e) => setEditForm((f) => ({ ...f, address: e.target.value }))} className="mt-1" />
               </div>
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit" disabled={loading}>
+                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
             </form>
           </div>
         </TabsContent>
@@ -205,28 +196,6 @@ const ProfileDashboard = () => {
                 ))}
               </div>
             )}
-          </div>
-        </TabsContent>
-
-        {/* Password tab */}
-        <TabsContent value="password">
-          <div className="bg-card rounded-xl border border-border p-6">
-            <h2 className="text-lg font-bold mb-4">Change Password</h2>
-            <form onSubmit={handleChangePassword} className="space-y-4 max-w-lg">
-              <div>
-                <Label>Current Password</Label>
-                <Input type="password" value={passForm.oldPassword} onChange={(e) => setPassForm((f) => ({ ...f, oldPassword: e.target.value }))} className="mt-1" />
-              </div>
-              <div>
-                <Label>New Password</Label>
-                <Input type="password" value={passForm.newPassword} onChange={(e) => setPassForm((f) => ({ ...f, newPassword: e.target.value }))} className="mt-1" />
-              </div>
-              <div>
-                <Label>Confirm New Password</Label>
-                <Input type="password" value={passForm.confirmPassword} onChange={(e) => setPassForm((f) => ({ ...f, confirmPassword: e.target.value }))} className="mt-1" />
-              </div>
-              <Button type="submit">Update Password</Button>
-            </form>
           </div>
         </TabsContent>
       </Tabs>
